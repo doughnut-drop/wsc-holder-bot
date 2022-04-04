@@ -11,14 +11,14 @@ COUNT_UNSTAKED_FUNCTION = "balanceOf"
 
 # ROLES
 HOLDER_ROLES = [
-    {"count":50, "role_id": 959821931064991754},
-    {"count":25, "role_id": 959821884944420884},
-    {"count":20, "role_id": 959822192550506516},
-    {"count":15, "role_id": 959822227463864330},
-    {"count":10, "role_id": 959822243154763856},
-    {"count":5, "role_id": 959822251358842901},
-    {"count":3, "role_id": 959822344875032636},
-    {"count":1, "role_id": 959822376214872186},
+    {"count":50, "role_id": 950705894298107954},
+    {"count":25, "role_id": 950705866749915136},
+    {"count":20, "role_id": 950705835334590534},
+    {"count":15, "role_id": 950705714534449193},
+    {"count":10, "role_id": 950705448909172746},
+    {"count":5, "role_id": 950705308680978432},
+    {"count":3, "role_id": 950705204452552754},
+    {"count":1, "role_id": 950708187466723368},
 ]
 
-DEFAULT_HOLDER_ROLE = 959822437195874314
+DEFAULT_HOLDER_ROLE = 948948601843879956

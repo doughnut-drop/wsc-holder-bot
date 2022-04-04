@@ -14,7 +14,7 @@ class DiscordClient(discord.Client):
         self.eth_client = web3_functions.EthClient()
         self.ethscan = ethscan_api.EthScan()
         self.date_format = "%Y-%m-%d"
-        self.current_date = datetime.strptime("2022-03-31", self.date_format)
+        self.current_date = datetime.strptime("2022-04-03", self.date_format)
 
         # get sabi (staking) contract object
         self.staking_contract_address = settings.STAKING_CONTRACT_ADDRESS
@@ -39,41 +39,58 @@ class DiscordClient(discord.Client):
         total_wsc_token_owned = len(staked_list) + unstaked_count
         return total_wsc_token_owned
 
+    def confirm_signed_message(self, member, signature):
+        wallet_address = self.eth_client.get_address_of_signed_msg(member, signature)
+        return wallet_address
+
     async def grant_role(self):
-        wallet_address = self.msg.split(" ")[-1]
+        wallet_address = self.msg.split(" ")[-2]
+        signature = self.msg.split(" ")[-1]
         member = self.message.author
-        token_count = self.get_wsc_token_count(wallet_address)
 
-        role_id = None
-        for holder in settings.HOLDER_ROLES:
-            if token_count >= holder["count"]:
-                role_id = holder["role_id"]
-                # end search when a role is assigned
-                if role_id is not None:
-                    break
-                else:
-                    continue
+        try:
+            confirmed_wallet_address = self.confirm_signed_message(str(member), signature)
+        except:
+            confirmed_wallet_address = None
         
-        role = discord.utils.get(member.guild.roles, id=role_id)
-        default_role = discord.utils.get(member.guild.roles, id=settings.DEFAULT_HOLDER_ROLE)
+        if wallet_address == confirmed_wallet_address:
+            token_count = self.get_wsc_token_count(wallet_address)
 
-        await member.add_roles(role, reason="add specific nft holder count role")
-        await member.add_roles(default_role, reason="add default nft holder count role")
+            role_id = None
+            for holder in settings.HOLDER_ROLES:
+                if token_count >= holder["count"]:
+                    role_id = holder["role_id"]
+                    # end search when a role is assigned
+                    if role_id is not None:
+                        break
+                    else:
+                        continue
+            
+            role = discord.utils.get(member.guild.roles, id=role_id)
+            default_role = discord.utils.get(member.guild.roles, id=settings.DEFAULT_HOLDER_ROLE)
 
-        # create embed message
-        embedMsg = discord.Embed(
-                title="Your Sabis have been verified!",
-                color=discord.Color.green(),
-            )
+            await member.add_roles(role, reason="add specific nft holder count role")
+            await member.add_roles(default_role, reason="add default nft holder count role")
 
-        embedMsg.add_field(name="total WSC tokens found", value=token_count, inline=False)
-        await self.message.channel.send(embed=embedMsg)
-        await self.message.channel.send(f"<@{member.id}>: `{role.name}` & `{default_role.name}` roles have been granted.")
+            # create embed message
+            embedMsg = discord.Embed(
+                    title="Your Sabis have been verified!",
+                    color=discord.Color.green(),
+                )
+
+            embedMsg.add_field(name="total WSC tokens found", value=token_count, inline=False)
+            await self.message.channel.send(embed=embedMsg)
+            await self.message.channel.send(f"<@{member.id}>: `{role.name}` & `{default_role.name}` roles have been granted.")
+        else:
+            await self.message.channel.send(f'''
+            <@{member.id}>, Make sure you followed the correct format: `!verify [your wallet address] [sig]`
+Either you submitted an incorrect wallet address input or the signed message did not contain the right discord id message (e.g. test#1234). Please try again.
+            ''')
 
     async def remove_non_holders(self):
         await self.message.channel.send("Starting the check for non holders...")
         owners_data = [
-            {"discord_id": 882534422065319977, "wallet_address": "0x310421C955b9a714Ad7a86C1c57c9698FD962318"},
+            {"discord_id": os.environ["DISCORD_ID"], "wallet_address": "0x310421C955b9a714Ad7a86C1c57c9698FD962318"},
         ]
         # check total token staked per address
         holder_roles_to_remove = [discord.utils.get(bot.get_all_members(), id=owner_data["discord_id"]) for owner_data in owners_data if self.get_wsc_token_count(owner_data["wallet_address"]) == 0]
@@ -90,6 +107,9 @@ class DiscordClient(discord.Client):
             await member.remove_roles(default_role, reason="user is no longer a holder.")
         await self.message.channel.send("Holder roles have been removed from non holders.")
 
+    async def update_holders(self):
+        pass
+
     async def on_message(self, message):
 
         if message.author == self.user:
@@ -101,12 +121,15 @@ class DiscordClient(discord.Client):
         # # check to remove non-holders
         # message_date = datetime.strptime(message.created_at.strftime(self.date_format), self.date_format)
         # if message_date > self.current_date:
-        #     self.current_date = date_today
+        #     self.current_date = message_date
         #     await self.update_holders()
         #     await self.remove_non_holders()
+        if self.msg == "!verify":
+            await self.message.channel.send(f'''Please follow this format `!verify [your wallet address] [sig]`''')
 
-        if self.msg.startswith("!verify"):
+        elif self.msg.startswith("!verify"):
             await self.grant_role()
+            await message.delete()  # delete message after granting the role
 
         elif self.msg.startswith("!connection"):
             await self.eth_connection()
