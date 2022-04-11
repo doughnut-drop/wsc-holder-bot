@@ -18,12 +18,12 @@ class PyMongo:
             inserted = collection.insert_many(data)
             # Print a count of documents inserted.
             return str(len(inserted.inserted_ids)) + " documents inserted"
+    
+    def update_in_collection(self, collection, filter: Union[list, dict], new_data):
+        collection.update_many(filter, new_data)
 
     def find_in_collection(self, collection, query: Union[list, dict], projection=None):
         return collection.find(query, projection)
 
-    def delete_in_collection(self, collection, query: Union[list, dict], count):
-        if count == 1:
-            collection.delete_one(query)
-        else:
-            collection.delete_many(query)
+    def delete_in_collection(self, collection, query: Union[list, dict]):
+        collection.delete_many(query)
