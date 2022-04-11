@@ -165,7 +165,8 @@ class DiscordClient(discord.Client):
             confirmed_wallet_address = self.confirm_signed_message(str(member), signature, wallet_address)
         
             if confirmed_wallet_address:
-                if self.is_wallet_already_assigned is not False:
+                discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
+                if discord_id_assigned is not False:
                     discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
                     await self.message.channel.send(f'''<@{member.id}>, this wallet has already been assigned to this discord account <@{discord_id_assigned}>. If you wish to use a different discord account, please reassign a new wallet to the old discord account first.''')
                     await message.delete()  # delete message after granting the role
