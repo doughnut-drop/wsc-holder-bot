@@ -76,7 +76,7 @@ class DiscordClient(discord.Client):
         search_query = {"$match": {"wallet_address": wallet_address}}
         projection = {"discord_id": 1}
         res = list(self.wsc_holders_db.token_tracking.aggregate([search_query, {"$project": projection}]))
-        return res[0]["discord_id"]
+        return res[0]["discord_id"] if len(res) > 0 else False
     
     async def remove_role(self, member, role_id, reason):
         role = discord.utils.get(member.guild.roles, id=int(role_id))
@@ -165,8 +165,8 @@ class DiscordClient(discord.Client):
             confirmed_wallet_address = self.confirm_signed_message(str(member), signature, wallet_address)
         
             if confirmed_wallet_address:
-                discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
-                if len(discord_id_assigned) > 0:
+                if self.is_wallet_already_assigned is not False:
+                    discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
                     await self.message.channel.send(f'''<@{member.id}>, this wallet has already been assigned to this discord account <@{discord_id_assigned}>. If you wish to use a different discord account, please reassign a new wallet to the old discord account first.''')
                     await message.delete()  # delete message after granting the role
                 else:
