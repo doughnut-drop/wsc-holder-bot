@@ -12,6 +12,6 @@ Built by @0xdoughnut
 - Grant roles
 - Store data in MongoDB
 - Daily checker for tokens held
-- Update roles and data in mongoDB (WIP)
-- Handling to avoid multi wallets per discord account (WIP)
+- Handling to avoid multi wallets per discord account
 - Confirm wallet associated to discord account
+- Update/remove roles daily (WIP)
