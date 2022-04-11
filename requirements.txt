@@ -13,5 +13,6 @@ eth-utils==1.10.0
 jsonschema==3.2.0
 lru-dict==1.1.7
 python-dotenv==0.19.2
+pymongo==3.11.3
 requests==2.27.1
 web3==5.26.0
