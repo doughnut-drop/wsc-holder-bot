@@ -71,7 +71,6 @@ class DiscordClient(discord.Client):
         res = list(self.wsc_holders_db.token_tracking.aggregate([search_query, {"$project": projection}]))
         return [int(r["holder_role"]) for r in res]
 
-
     def is_wallet_already_assigned(self, wallet_address):
         search_query = {"$match": {"wallet_address": wallet_address}}
         projection = {"discord_id": 1}
@@ -90,9 +89,7 @@ class DiscordClient(discord.Client):
             await member.add_roles(default_role, reason="add default nft holder count role")
             await self.message.channel.send(f"<@{member.id}>: `{role.name}` & `{default_role.name}` roles have been granted.")
 
-    async def remove_non_holders(self):
-        await self.message.channel.send("Starting the check for non holders...")
-        
+    async def check_holders(self):        
         '''
         load data from mongodb
         '''
@@ -136,9 +133,6 @@ class DiscordClient(discord.Client):
                         await member.add_roles(new_role, reason="add specific nft holder count role")
             await self.message.channel.send("Holder roles have been removed from non holders.")
 
-    async def update_holders(self):
-        pass
-
     async def on_message(self, message):
 
         if message.author == self.user:
@@ -176,6 +170,9 @@ class DiscordClient(discord.Client):
                         await self.remove_role(member, role_id, "removing existing roles for a new role.")
                         self.del_data_in_mongodb(member.id)
                     token_count = self.get_wsc_token_count(wallet_address)
+
+                    if token_count == 0:
+                        await self.message.channel.send(f'''<@{member.id}>, there is no staked/unstaked wabis in this wallet.''')
 
                     role_id = None
                     for holder in settings.HOLDER_ROLES:
