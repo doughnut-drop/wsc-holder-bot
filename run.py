@@ -47,7 +47,7 @@ class DiscordClient(discord.Client):
     def confirm_signed_message(self, member, signature, wallet_address):
         try:
             signed_wallet = self.eth_client.get_address_of_signed_msg(member, signature)
-        except:
+        except Exception:
             signed_wallet = None
         return signed_wallet == wallet_address
 
@@ -76,25 +76,25 @@ class DiscordClient(discord.Client):
         projection = {"discord_id": 1}
         res = list(self.wsc_holders_db.token_tracking.aggregate([search_query, {"$project": projection}]))
         return res[0]["discord_id"] if len(res) > 0 else False
-    
+
     async def remove_role(self, member, role_id, reason):
         role = discord.utils.get(member.guild.roles, id=int(role_id))
         await member.remove_roles(role, reason=reason)
 
     async def grant_role(self, member, role_id):
-            role = discord.utils.get(member.guild.roles, id=role_id)
-            default_role = discord.utils.get(member.guild.roles, id=settings.DEFAULT_HOLDER_ROLE)
+        role = discord.utils.get(member.guild.roles, id=role_id)
+        default_role = discord.utils.get(member.guild.roles, id=settings.DEFAULT_HOLDER_ROLE)
 
-            await member.add_roles(role, reason="add specific nft holder count role")
-            await member.add_roles(default_role, reason="add default nft holder count role")
-            await self.message.channel.send(f"<@{member.id}>: `{role.name}` & `{default_role.name}` roles have been granted.")
+        await member.add_roles(role, reason="add specific nft holder count role")
+        await member.add_roles(default_role, reason="add default nft holder count role")
+        await self.message.channel.send(f"<@{member.id}>: `{role.name}` & `{default_role.name}` roles have been granted.")
 
-    async def check_holders(self):        
+    async def check_holders(self):
         '''
         load data from mongodb
         '''
         owners_data = None
-        
+
         # check total token staked per address
         holder_roles_to_remove = []
         holder_roles_to_update = []
@@ -121,7 +121,7 @@ class DiscordClient(discord.Client):
                 default_role = discord.utils.get(member.guild.roles, id=settings.DEFAULT_HOLDER_ROLE)
                 await member.remove_roles(default_role, reason="user is no longer a holder.")
             await self.message.channel.send("Holder roles have been removed from non holders.")
-        
+
         if len(holder_roles_to_update) > 0:
             for member in holder_roles_to_update:
                 for member_role in member.roles:
@@ -149,7 +149,7 @@ class DiscordClient(discord.Client):
         #     await self.remove_non_holders()
 
         if self.msg == "!verify":
-            await self.message.channel.send(f'''Please follow this format `!verify [your wallet address] [sig]`''')
+            await self.message.channel.send('''Please follow this format `!verify [your wallet address] [sig]`''')
 
         elif self.msg.startswith("!verify"):
             wallet_address = self.msg.split(" ")[-2]
@@ -157,7 +157,7 @@ class DiscordClient(discord.Client):
             member = self.message.author
 
             confirmed_wallet_address = self.confirm_signed_message(str(member), signature, wallet_address)
-        
+
             if confirmed_wallet_address:
                 discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
                 if discord_id_assigned is not False:
@@ -173,29 +173,29 @@ class DiscordClient(discord.Client):
 
                     if token_count == 0:
                         await self.message.channel.send(f'''<@{member.id}>, there is no staked/unstaked wabis in this wallet.''')
+                    else:
+                        role_id = None
+                        for holder in settings.HOLDER_ROLES:
+                            if token_count >= holder["count"]:
+                                role_id = holder["role_id"]
+                                # end search when a role is assigned
+                                if role_id is not None:
+                                    break
+                                else:
+                                    continue
 
-                    role_id = None
-                    for holder in settings.HOLDER_ROLES:
-                        if token_count >= holder["count"]:
-                            role_id = holder["role_id"]
-                            # end search when a role is assigned
-                            if role_id is not None:
-                                break
-                            else:
-                                continue
-                    
-                    self.store_data_to_mongodb(member, role_id, wallet_address, token_count)
+                        self.store_data_to_mongodb(member, role_id, wallet_address, token_count)
 
-                    await self.grant_role(member, role_id)
-                    # create embed message
-                    embedMsg = discord.Embed(
-                            title="Your Sabis have been verified!",
-                            color=discord.Color.green(),
-                        )
+                        await self.grant_role(member, role_id)
+                        # create embed message
+                        embedMsg = discord.Embed(
+                                title="Your Wabis have been verified!",
+                                color=discord.Color.green(),
+                            )
 
-                    embedMsg.add_field(name="total WSC tokens found", value=token_count, inline=False)
-                    await self.message.channel.send(embed=embedMsg)
-                    await message.delete()  # delete message after granting the role
+                        embedMsg.add_field(name="total WSC tokens found", value=token_count, inline=False)
+                        await self.message.channel.send(embed=embedMsg)
+                        await message.delete()  # delete message after granting the role
             else:
                 await self.message.channel.send(f'''
                 <@{member.id}>, Make sure you followed the correct format: `!verify [your wallet address] [sig]`
