@@ -195,7 +195,7 @@ class DiscordClient(discord.Client):
 
                         embedMsg.add_field(name="total WSC tokens found", value=token_count, inline=False)
                         await self.message.channel.send(embed=embedMsg)
-                        await message.delete()  # delete message after granting the role
+                        # await message.delete()  # delete message after granting the role
             else:
                 await self.message.channel.send(f'''
                 <@{member.id}>, Make sure you followed the correct format: `!verify [your wallet address] [sig]`
