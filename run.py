@@ -1,3 +1,4 @@
+import re
 import os
 from dotenv import load_dotenv
 from datetime import datetime
@@ -152,16 +153,15 @@ class DiscordClient(discord.Client):
             await self.message.channel.send('''Please follow this format `!verify [your wallet address] [sig]`''')
 
         elif self.msg.startswith("!verify"):
-            wallet_address = self.msg.split(" ")[-2]
-            signature = self.msg.split(" ")[-1]
+            wallet_address = re.sub('[^a-zA-Z0-9]+', '', self.msg.split(" ")[-2])
+            signature = re.sub('[^a-zA-Z0-9]+', '', self.msg.split(" ")[-1])
             member = self.message.author
 
             confirmed_wallet_address = self.confirm_signed_message(str(member), signature, wallet_address)
 
             if confirmed_wallet_address:
                 discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
-                if discord_id_assigned is not False:
-                    discord_id_assigned = self.is_wallet_already_assigned(wallet_address)
+                if (discord_id_assigned is not False) & (member.id == discord_id_assigned):
                     await self.message.channel.send(f'''<@{member.id}>, this wallet has already been assigned to this discord account <@{discord_id_assigned}>. If you wish to use a different discord account, please reassign a new wallet to the old discord account first.''')
                     await message.delete()  # delete message after granting the role
                 else:
