@@ -1,10 +1,12 @@
 # test file
 test.py
+convert_id_to_username.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.csv
 
 # C extensions
 *.so
