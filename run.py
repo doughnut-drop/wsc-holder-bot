@@ -1,5 +1,6 @@
 import re
 import os
+import random
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -18,8 +19,13 @@ class DiscordClient(discord.Client):
         self.pymongo_db = pymongo_api.PyMongo()
         self.date_format = "%Y-%m-%d"
         self.current_date = datetime.strptime("2022-05-17", self.date_format)
-        self.holder_role_ids = [x["role_id"] for x in settings.HOLDER_ROLES]
 
+        # DISCORD
+        self.holder_role_ids = [x["role_id"] for x in settings.HOLDER_ROLES]
+        self.instructions_channel = settings.INSTRUCTIONS_CHANNEL
+        self.guild = self.get_guild(settings.SERVER_ID)
+
+        # MONGO DB
         self.wsc_holders_db = self.pymongo_db.client.wsc_holders
 
         # get sabi (staking) contract object
@@ -34,8 +40,11 @@ class DiscordClient(discord.Client):
         self.unstaked_contract_abi = self.ethscan.get_contract_abi(self.unstaked_contract_address)
         self.unstaked_contract_obj = self.eth_client.get_contract_obj(self.unstaked_contract_address, self.unstaked_contract_abi)
 
-        # get discord id
-        self.guild = self.get_guild(settings.SERVER_ID)
+        # get raffle entries contract object
+        self.raffle_contract_address = settings.RAFFLE_CONTRACT_ADDRESS
+        self.raffle_entries_function = settings.RAFFLE_ENTRIES_FUNCTION
+        self.raffle_contract_abi = self.ethscan.get_contract_abi(self.raffle_contract_address)
+        self.raffle_contract_obj = self.eth_client.get_contract_obj(self.raffle_contract_address, self.raffle_contract_abi)
 
         print("We have logged in as:", self.user)
 
@@ -47,6 +56,11 @@ class DiscordClient(discord.Client):
         unstaked_count = self.eth_client.get_wsc_token_count(self.unstaked_contract_obj, self.count_unstaked_function, wallet_address)  # get staked count from address; returns int
         total_wsc_token_owned = len(staked_list) + unstaked_count
         return total_wsc_token_owned
+
+    def get_raffle_winner(self):
+        raffle_entries = self.raffle_contract_obj.functions.buyersOfDraw().call()
+        winner = random.choice(raffle_entries)
+        return winner
 
     def confirm_signed_message(self, member, signature, wallet_address):
         try:
@@ -163,6 +177,10 @@ class DiscordClient(discord.Client):
         self.message = message
         self.msg = message.content
 
+        if self.msg.startswith("!drawraffle"):
+            winner = self.get_raffle_winner()
+            await self.message.channel.send(f'''The winner for this draw is: {winner}.''')
+
         # check to update holder roles
         message_date = datetime.strptime(message.created_at.strftime(self.date_format), self.date_format)
         if message_date > self.current_date:
@@ -170,7 +188,7 @@ class DiscordClient(discord.Client):
             await self.check_holders(verbose=False)
 
         if self.msg == "!verify":
-            await self.message.channel.send('''Please follow this format `!verify [your wallet address] [sig]`''')
+            await self.message.channel.send(f'''Read the instructions in <#{self.instructions_channel}>. Please follow this format `!verify [your wallet address] [sig]`''')
 
         elif self.msg.startswith("!verify"):
             wallet_address = re.sub('[^a-zA-Z0-9]+', '', self.msg.split(" ")[-2])
@@ -185,10 +203,10 @@ class DiscordClient(discord.Client):
                     await self.message.channel.send(f'''<@{member.id}>, this wallet has already been assigned to this discord account <@{discord_id_assigned}>. If you wish to use a different discord account, please reassign a new wallet to the old discord account first.''')
                     await message.delete()  # delete message after granting the role
                 else:
-                    self.set_roles(member, wallet_address)
+                    await self.set_roles(member, wallet_address, 0)
             else:
                 await self.message.channel.send(f'''
-                <@{member.id}>, Make sure you followed the correct format: `!verify [your wallet address] [sig]`
+                <@{member.id}>, Make sure you followed the correct format: `!verify [your wallet address] [sig]`. Read the instructions in <#{self.instructions_channel}>.
     Either you submitted an incorrect wallet address input or the signed message did not contain the right discord id message (e.g. test#1234). Please try again.
                 ''')
 
